@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chale</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #fff; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    h1 { color: #f90; margin-bottom: 10px; }
+    #status { margin-bottom: 15px; color: #aaa; }
+    #main { display: none; flex-direction: row; gap: 20px; align-items: flex-start; }
+    #videos { display: flex; flex-direction: column; gap: 10px; }
+    video { width: 280px; height: 200px; background: #000; border-radius: 8px; }
+    #chatBox { display: flex; flex-direction: column; width: 300px; }
+    #messages { background: #222; padding: 15px; height: 300px; overflow-y: auto; border-radius: 8px; margin-bottom: 10px; }
+    #messages p { margin-bottom: 8px; }
+    #messages .me { color: #f90; }
+    #messages .stranger { color: #fff; }
+    #inputArea { display: flex; gap: 10px; }
+    #inputArea input { flex: 1; padding: 10px; border-radius: 6px; border: none; background: #333; color: #fff; }
+    #inputArea button { padding: 10px 15px; background: #f90; border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer; }
+    #skipBtn { margin-top: 10px; background: #333; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Chale 🤝</h1>
+  <div id="status">Connecting...</div>
+  <div id="main">
+    <div id="videos">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    <div id="chatBox">
+      <div id="messages"></div>
+      <div id="inputArea">
+        <input id="msgInput" type="text" placeholder="Type a message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
+      <button id="skipBtn" onclick="location.reload()">Skip / Next</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentRoom = null;
+    let peerConnection = null;
+    let localStream = null;
+
+    const config = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    // Get camera and mic
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+      localStream = stream;
+      document.getElementById('localVideo').srcObject = stream;
+    });
+
+    socket.on('waiting', () => {
+      document.getElementById('status').textContent = 'Looking for someone...';
+    });
+
+    socket.on('matched', async ({ room, initiator }) => {
+      currentRoom = room;
+      document.getElementById('status').textContent = 'Connected! Say hi 👋';
+      document.getElementById('main').style.display = 'flex';
+
+      peerConnection = new RTCPeerConnection(config);
+
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      peerConnection.ontrack = (e) => {
+        document.getElementById('remoteVideo').srcObject = e.streams[0];
+      };
+
+      peerConnection.onicecandidate = (e) => {
+        if (e.candidate) socket.emit('ice-candidate', { room, candidate: e.candidate });
+      };
+
+      if (socket.id !== initiator) {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('offer', { room, offer });
+      }
+    });
+
+    socket.on('offer', async ({ offer }) => {
+      await peerConnection.setRemoteDescription(offer);
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('answer', { room: currentRoom, answer });
+    });
+
+    socket.on('answer', async ({ answer }) => {
+      await peerConnection.setRemoteDescription(answer);
+    });
+
+    socket.on('ice-candidate', async ({ candidate }) => {
+      await peerConnection.addIceCandidate(candidate);
+    });
+
+    socket.on('message', ({ text }) => {
+      addMessage('Stranger', text, 'stranger');
+    });
+
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text || !currentRoom) return;
+      socket.emit('message', { room: currentRoom, text });
+      addMessage('You', text, 'me');
+      input.value = '';
+    }
+
+    function addMessage(sender, text, cls) {
+      const msgs = document.getElementById('messages');
+      msgs.innerHTML += `<p class="${cls}"><strong>${sender}:</strong> ${text}</p>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    document.getElementById('msgInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
