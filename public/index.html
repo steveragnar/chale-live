@@ -67,6 +67,10 @@ const config = {
 navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
   localStream = stream;
   document.getElementById('localVideo').srcObject = stream;
+  socket.emit('ready');
+}).catch(err => {
+  console.error('Camera error:', err);
+  alert('Please allow camera and microphone access!');
 });
 
 socket.on('waiting', () => {
