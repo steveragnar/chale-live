@@ -13,7 +13,8 @@ let waitingUser = null;
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  if (waitingUser) {
+  socket.on('ready', () => {
+  if (waitingUser)  {
     const room = socket.id + '#' + waitingUser.id;
     socket.join(room);
     waitingUser.join(room);
