@@ -89,7 +89,7 @@
         if (e.candidate) socket.emit('ice-candidate', { room, candidate: e.candidate });
       };
 
-      if (socket.id !== initiator) {
+     if (socket.id === initiator) {
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         socket.emit('offer', { room, offer });
