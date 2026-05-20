@@ -47,10 +47,21 @@
     let peerConnection = null;
     let localStream = null;
 
-    const config = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-    };
-
+ const config = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    {
+      urls: 'turn:chale-live.metered.live:80',
+      username: '2d8aa6332ebaed934dfd6f8b',
+      credential: 'Tu0yQP1/dCgriuIG'
+    },
+    {
+      urls: 'turn:chale-live.metered.live:443',
+      username: '2d8aa6332ebaed934dfd6f8b',
+      credential: 'Tu0yQP1/dCgriuIG'
+    }
+  ]
+};
     // Get camera and mic
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       localStream = stream;
