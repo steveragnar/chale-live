@@ -14,23 +14,22 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('ready', () => {
-  if (waitingUser)  {
-    const room = socket.id + '#' + waitingUser.id;
-    socket.join(room);
-    waitingUser.join(room);
-
-    io.to(room).emit('matched', { room, initiator: waitingUser.id });
-    waitingUser = null;
-  } else {
-    waitingUser = socket;
-    socket.emit('waiting');
-  }
+    if (waitingUser) {
+      const room = socket.id + '#' + waitingUser.id;
+      socket.join(room);
+      waitingUser.join(room);
+      io.to(room).emit('matched', { room, initiator: waitingUser.id });
+      waitingUser = null;
+    } else {
+      waitingUser = socket;
+      socket.emit('waiting');
+    }
+  });
 
   socket.on('message', ({ room, text }) => {
     socket.to(room).emit('message', { text });
   });
 
-  // WebRTC signaling
   socket.on('offer', ({ room, offer }) => {
     socket.to(room).emit('offer', { offer });
   });
@@ -48,6 +47,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(process.env.PORT || 3000, () => { 
-   console.log('Chale running on http://localhost:3000');
+server.listen(process.env.PORT || 3000, () => {
+  console.log('Chale running on http://localhost:3000');
 });
