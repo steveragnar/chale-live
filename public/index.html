@@ -67,7 +67,7 @@ const config = {
 navigator.mediaDevices.getUserMedia({ 
   video: true, 
   audio: { echoCancellation: true, noiseSuppression: true } 
-})
+}).then(stream => {
   localStream = stream;
   document.getElementById('localVideo').srcObject = stream;
   socket.emit('ready');
